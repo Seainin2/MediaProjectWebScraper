@@ -12,7 +12,9 @@ GAME_METACRITIC_COMING_SOON_URL = 'https://www.metacritic.com/feature/major-upco
 GAME_STEAM_COMING_SOON_URL = 'https://store.steampowered.com/explore/upcoming/'
 
 #Book urls to be scraped
-BOOK_WATERSTONE_COMING_SOON_URL = 'https://www.waterstones.com/campaign/coming-soon'
+BOOK_FANTASTIC_COMING_SOON_URL = 'https://www.fantasticfiction.com/coming-soon/'
+BOOK_AMAZON_COMING_SOON_URL = "https://www.amazon.com/Books-Coming-Soon/s?rh=n%3A283155%2Cp_n_publication_date%3A1250228011"
+BOOK_RISINGSHADOW_COMING_SOON_URL = "https://www.risingshadow.net/library/comingbooks"
 
 #Show urls to be scraped
 SHOW_METACRITIC_COMING_SOON_URL = 'https://www.metacritic.com/browse/tv/release-date/coming-soon/date'
@@ -26,7 +28,7 @@ def get_driver():
 
     driver = webdriver.Chrome(options=chrome_options)
     return driver
-  
+
 
 def check_if_class_exists(tag, html):
     try:
@@ -55,13 +57,6 @@ def parse_movie_metacritic(movie):
 
         description_tag = movie.find_element(By.CLASS_NAME, 'summary')
         description = description_tag.text
-
-        print('Title:', title)
-        print('Image URL:', img_url)
-        print('Date:', date)
-        print('Rating:', rating)
-        print('Score:', score)
-        print('Description:', description)
 
         return {
             'title': title,
@@ -125,29 +120,61 @@ def parse_game_steam(game):
         }
 
 
-def handle_games_steam(driver,url,file):
+def parse_book_risingshadow(book):
+    tr = book.find_elements(By.TAG_NAME, 'td')
+    data = tr[1].text
+
+    link = tr[0].find_element(By.TAG_NAME, 'a').get_attribute('href')
+    img_url = tr[0].find_element(By.TAG_NAME, 'img').get_attribute('data-src')
+
+    data = data.split('\n')
+
+    return {
+        'title': data[0],
+        'img_url': 'https://www.risingshadow.net/' + img_url,
+        'author': data[1],
+        'date': data[3],
+        'genre': data[4],
+        'link': link
+    }
+
+
+def handle_games_steam(driver, url, file):
     driver.get(url)
     page = driver.find_element(By.ID, 'tab_popular_comingsoon_content')
     games = page.find_elements(By.TAG_NAME, 'a')
-    games_data = [parse_game_steam(game)for game in games]
+    games_data = [parse_game_steam(game) for game in games]
     games_df = pd.DataFrame(games_data)
     games_df.to_csv(file)
-    return True
+
+
+def handle_movies_metacritic(driver, url, file):
+    driver.get(url)
+    movies = driver.find_elements(By.TAG_NAME, 'tr')
+    movies_data = [parse_movie_metacritic(movie) for movie in movies]
+    movies_df = pd.DataFrame(movies_data)
+    movies_df.to_csv(file)
+
+
+def handle_books_risingshadow(driver, url, file):
+    driver.get(url)
+    books = driver.find_elements(By.CLASS_NAME, 'library')
+    books_data = [parse_book_risingshadow(book) for book in books]
+    books_df = pd.DataFrame(books_data)
+    books_df.to_csv(file)
+
 
 if __name__ == "__main__":
 
     driver = get_driver()
 
-    #games on steam  
-    handle_games_steam(driver,GAME_STEAM_COMING_SOON_URL,'games_steam.csv')
-  
-    #movies on metacritic
-    driver.get(MOVIE_MEATCRITIC_COMING_SOON_URL)
-    movies = driver.find_elements(By.TAG_NAME, 'tr')
-    movies_data = [parse_movie_metacritic(movie)for movie in movies]
-    movies_df = pd.DataFrame(movies_data)
-    movies_df.to_csv('movie_metacritic.csv')
+    #games on steam
+    #handle_games_steam(driver, GAME_STEAM_COMING_SOON_URL, 'games_steam.csv')
 
-  
+    #movies on metacritic
+    #handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,'movies_metacritic.csv')
+
+    #books on risingshadow
+    #handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
 
     driver.quit()
