@@ -30,51 +30,54 @@ def get_driver():
     return driver
 
 
-def check_if_class_exists(tag, html):
+def check_if_class_exists(type, tag, html):
     try:
-        html.find_element(By.CLASS_NAME, tag)
+
+        if type == 'class':
+            isText = html.find_element(By.CLASS_NAME, tag).text.strip()
+        if type == 'tag':
+            isText = html.find_element(By.TAG_NAME, tag).text.strip()
+
+        if not isText:
+            return False
         return True
     except:
         return False
 
 
 def parse_movie_metacritic(movie):
+
+    title_tag = movie.find_element(By.CLASS_NAME, 'title')
+    title = title_tag.text
+
+    img_url_tag = movie.find_element(By.TAG_NAME, 'img')
+    img_url = img_url_tag.get_attribute('src')
+
+    score_tag = movie.find_element(By.CLASS_NAME, 'metascore_w')
+    score = score_tag.text
+
     try:
-        title_tag = movie.find_element(By.CLASS_NAME, 'title')
-        title = title_tag.text
-
-        img_url_tag = movie.find_element(By.TAG_NAME, 'img')
-        img_url = img_url_tag.get_attribute('src')
-
-        score_tag = movie.find_element(By.CLASS_NAME, 'metascore_w')
-        score = score_tag.text
-
         multi_tag = movie.find_element(By.CLASS_NAME, 'clamp-details')
         multi = multi_tag.text
         m = multi.split('|')
         date = m[0]
         rating = m[1]
-
-        description_tag = movie.find_element(By.CLASS_NAME, 'summary')
-        description = description_tag.text
-
-        return {
-            'title': title,
-            'img_url': img_url,
-            'date': date,
-            'rating': rating,
-            'score': score,
-            'description': description
-        }
     except:
-        return {
-            'title': '',
-            'img_url': '',
-            'date': '',
-            'rating': '',
-            'score': '',
-            'description': ''
-        }
+        print('date and rating where not found')
+        date = ''
+        rating = ''
+
+    description_tag = movie.find_element(By.CLASS_NAME, 'summary')
+    description = description_tag.text
+
+    return {
+        'title': title,
+        'img_url': img_url,
+        'date': date,
+        'rating': rating,
+        'score': score,
+        'description': description
+    }
 
 
 def parse_game_steam(game):
@@ -97,7 +100,7 @@ def parse_game_steam(game):
         available = ''
 
         for x in ava:
-            if check_if_class_exists(x, game):
+            if check_if_class_exists('class', x, game):
                 available = x + ', ' + available
 
         return {
@@ -149,8 +152,13 @@ def handle_games_steam(driver, url, file):
 
 
 def handle_movies_metacritic(driver, url, file):
+    movies = []
     driver.get(url)
-    movies = driver.find_elements(By.TAG_NAME, 'tr')
+    table = driver.find_elements(By.TAG_NAME, 'tr')
+    for row in table:
+        if check_if_class_exists('class', 'summary', row):
+            movies.append(row)
+
     movies_data = [parse_movie_metacritic(movie) for movie in movies]
     movies_df = pd.DataFrame(movies_data)
     movies_df.to_csv(file)
@@ -166,24 +174,26 @@ def handle_books_risingshadow(driver, url, file):
 
 if __name__ == "__main__":
 
+    print('Setting up driver')
     driver = get_driver()
 
     #games on steam
     #handle_games_steam(driver, GAME_STEAM_COMING_SOON_URL, 'games_steam.csv')
 
     #movies on metacritic
-    #handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,'movies_metacritic.csv')
+    handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,
+                             'movies_metacritic.csv')
 
     #books on risingshadow
     #handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
 
-    driver.get(SHOW_METACRITIC_COMING_SOON_URL)
-    shows = driver.find_elements(By.TAG_NAME,'tr')
+    #driver.get(SHOW_METACRITIC_COMING_SOON_URL)
+    #shows = driver.find_elements(By.TAG_NAME, 'tr')
 
-    print(f'Found {len(shows)}')
+    #print(f'Found {len(shows)}')
 
-    shows_data = [parse_movie_metacritic(show) for show in shows]
-    shows_df = pd.DataFrame(shows_data)
-    shows_df.to_csv('shows_metacritic.csv')
+    #shows_data = [parse_movie_metacritic(show) for show in shows]
+    #shows_df = pd.DataFrame(shows_data)
+    #shows_df.to_csv('shows_metacritic.csv')
 
     driver.quit()
