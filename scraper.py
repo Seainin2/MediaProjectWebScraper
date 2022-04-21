@@ -177,4 +177,13 @@ if __name__ == "__main__":
     #books on risingshadow
     #handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
 
+    driver.get(SHOW_METACRITIC_COMING_SOON_URL)
+    shows = driver.find_elements(By.TAG_NAME,'tr')
+
+    print(f'Found {len(shows)}')
+
+    shows_data = [parse_movie_metacritic(show) for show in shows]
+    shows_df = pd.DataFrame(shows_data)
+    shows_df.to_csv('shows_metacritic.csv')
+
     driver.quit()
