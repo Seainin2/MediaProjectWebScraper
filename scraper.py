@@ -26,21 +26,7 @@ def get_driver():
 
     driver = webdriver.Chrome(options=chrome_options)
     return driver
-
-
-def get_media_by_tag(driver, tag, url):
-    print('Getting Media Divs')
-    driver.get(url)
-    medias = driver.find_elements(By.TAG_NAME, tag)
-    return medias
-
-
-def get_media_by_id(driver, id, url):
-    print('Getting Media Divs')
-    driver.get(url)
-    medias = driver.find_elements(By.ID, id)
-    return medias
-
+  
 
 def check_if_class_exists(tag, html):
     try:
@@ -139,30 +125,29 @@ def parse_game_steam(game):
         }
 
 
-if __name__ == "__main__":
-    print('Creating driver')
-    driver = get_driver()
-
-    print('Fetching Games from steam')
-
-    print('Getting Media Divs')
-    driver.get(GAME_STEAM_COMING_SOON_URL)
-
+def handle_games_steam(driver,url,file):
+    driver.get(url)
     page = driver.find_element(By.ID, 'tab_popular_comingsoon_content')
     games = page.find_elements(By.TAG_NAME, 'a')
+    games_data = [parse_game_steam(game)for game in games]
+    games_df = pd.DataFrame(games_data)
+    games_df.to_csv(file)
+    return True
 
-    print(f'Found {len(games)}')
+if __name__ == "__main__":
 
-    #title,img_url,date,themes,playedon,link
+    driver = get_driver()
 
-    #print('Fetching Movies from metacritic')
-    #movies = get_media_by_tag(driver,'tr',MOVIE_MEATCRITIC_COMING_SOON_URL)
+    #games on steam  
+    handle_games_steam(driver,GAME_STEAM_COMING_SOON_URL,'games_steam.csv')
+  
+    #movies on metacritic
+    driver.get(MOVIE_MEATCRITIC_COMING_SOON_URL)
+    movies = driver.find_elements(By.TAG_NAME, 'tr')
+    movies_data = [parse_movie_metacritic(movie)for movie in movies]
+    movies_df = pd.DataFrame(movies_data)
+    movies_df.to_csv('movie_metacritic.csv')
 
-    #movies_data = [parse_movie_metacritic(movie)for movie in movies]
-
-    #print("Save the data to a csv file")
-    #movies_df = pd.DataFrame(movies_data)
-    #df1 = movies_df.dropna()
-    #df1.to_csv('movie_metacritic.csv')
+  
 
     driver.quit()
