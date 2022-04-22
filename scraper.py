@@ -142,6 +142,32 @@ def parse_book_risingshadow(book):
     }
 
 
+def parse_show_metacritic(show):
+
+    title_tag = show.find_element(By.CLASS_NAME, 'title')
+    title = title_tag.text
+
+    img_url_tag = show.find_element(By.TAG_NAME, 'img')
+    img_url = img_url_tag.get_attribute('src')
+
+    score_tag = show.find_element(By.CLASS_NAME, 'metascore_w')
+    score = score_tag.text
+
+    multi_tag = show.find_element(By.CLASS_NAME, 'clamp-details')
+    multi = multi_tag.text
+
+    description_tag = show.find_element(By.CLASS_NAME, 'summary')
+    description = description_tag.text
+
+    return {
+        'title': title,
+        'img_url': img_url,
+        'date': multi,
+        'score': score,
+        'description': description
+    }
+
+
 def handle_games_steam(driver, url, file):
     driver.get(url)
     page = driver.find_element(By.ID, 'tab_popular_comingsoon_content')
@@ -171,29 +197,37 @@ def handle_books_risingshadow(driver, url, file):
     books_df = pd.DataFrame(books_data)
     books_df.to_csv(file)
 
+def handle_shows_metacritic(driver, url, file):
+    driver.get(url)
+    table = driver.find_elements(By.TAG_NAME, 'tr')
+
+    print(f'Found {len(table)}')
+    shows = []
+  
+    for row in table:
+        if check_if_class_exists('class', 'summary', row):
+            shows.append(row)
+    print(f'Found {len(shows)}')
+    shows_data = [parse_show_metacritic(show) for show in shows]
+    shows_df = pd.DataFrame(shows_data)
+    shows_df.to_csv(file)
 
 if __name__ == "__main__":
 
-    print('Setting up driver')
-    driver = get_driver()
+    #driver = get_driver()
 
     #games on steam
     #handle_games_steam(driver, GAME_STEAM_COMING_SOON_URL, 'games_steam.csv')
 
     #movies on metacritic
-    handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,
-                             'movies_metacritic.csv')
+    #handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,'movies_metacritic.csv')
 
     #books on risingshadow
     #handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
 
-    #driver.get(SHOW_METACRITIC_COMING_SOON_URL)
-    #shows = driver.find_elements(By.TAG_NAME, 'tr')
+    #shows on metacritic
+    #handle_shows_metacritic(driver,SHOW_METACRITIC_COMING_SOON_URL,'shows_metacritic.csv')
 
-    #print(f'Found {len(shows)}')
+    
 
-    #shows_data = [parse_movie_metacritic(show) for show in shows]
-    #shows_df = pd.DataFrame(shows_data)
-    #shows_df.to_csv('shows_metacritic.csv')
-
-    driver.quit()
+    #driver.quit()
