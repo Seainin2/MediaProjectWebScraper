@@ -5,6 +5,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import pyodbc
+import uuid
+import datetime
 
 #Movie urls to be scraped
 MOVIE_MEATCRITIC_COMING_SOON_URL = 'https://www.metacritic.com/browse/movies/release-date/coming-soon/date?view=detailed'
@@ -53,41 +55,100 @@ def check_if_class_exists(type, tag, html):
     except:
         return False
 
+#Show-START****************************************************************************************************************************************************************************        
+def handle_shows_metacritic(driver, url, file):
+    driver.get(url)
+    table = driver.find_elements(By.TAG_NAME, 'tr')
 
-def parse_movie_metacritic(movie):
+    print(f'Found {len(table)}')
+    shows = []
+  
+    for row in table:
+        if check_if_class_exists('class', 'summary', row):
+            shows.append(row)
+    print(f'Found {len(shows)}')
 
-    title_tag = movie.find_element(By.CLASS_NAME, 'title')
+    shows_data = []
+
+    for show in shows:
+        parsedShow = parse_show_metacritic(show)
+
+        add_show_to_db(parsedShow)
+        shows_data.append(parsedShow)
+
+    shows_df = pd.DataFrame(shows_data)
+    shows_df.to_csv(file)
+
+def add_show_to_db(show):
+    MediaId = uuid.uuid1()
+    SeriesId = uuid.uuid1()
+    CreatingPropertyId = uuid.uuid1()
+    ReleaseDate = datetime.datetime(2009,5,5)
+    
+    with pyodbc.connect(DB_CONNECTION) as conn:
+        with conn.cursor() as cursor:
+                
+            count = cursor.execute("""INSERT INTO [dbo].[Shows] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName)
+             VALUES (?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'show',show['title'],show['img_url']).rowcount
+            conn.commit()
+
+def parse_show_metacritic(show):
+
+    title_tag = show.find_element(By.CLASS_NAME, 'title')
     title = title_tag.text
 
-    img_url_tag = movie.find_element(By.TAG_NAME, 'img')
+    img_url_tag = show.find_element(By.TAG_NAME, 'img')
     img_url = img_url_tag.get_attribute('src')
 
-    score_tag = movie.find_element(By.CLASS_NAME, 'metascore_w')
+    score_tag = show.find_element(By.CLASS_NAME, 'metascore_w')
     score = score_tag.text
 
-    try:
-        multi_tag = movie.find_element(By.CLASS_NAME, 'clamp-details')
-        multi = multi_tag.text
-        m = multi.split('|')
-        date = m[0]
-        rating = m[1]
-    except:
-        print('date and rating where not found')
-        date = ''
-        rating = ''
+    multi_tag = show.find_element(By.CLASS_NAME, 'clamp-details')
+    multi = multi_tag.text
 
-    description_tag = movie.find_element(By.CLASS_NAME, 'summary')
+    description_tag = show.find_element(By.CLASS_NAME, 'summary')
     description = description_tag.text
 
     return {
         'title': title,
         'img_url': img_url,
-        'date': date,
-        'rating': rating,
+        'date': multi,
         'score': score,
         'description': description
     }
+#Shows-END****************************************************************************************************************************************************************************
 
+
+#Games-START****************************************************************************************************************************************************************************
+def handle_games_steam(driver, url, file):
+    driver.get(url)
+    page = driver.find_element(By.ID, 'tab_popular_comingsoon_content')
+    games = page.find_elements(By.TAG_NAME, 'a')
+
+    games_data = []
+
+    for game in games:
+        
+        parsedGame = parse_game_steam(game)
+        if not parsedGame['title'] == '':
+            add_game_to_db(parsedGame)
+            games_data.append(parsedGame)
+
+    games_df = pd.DataFrame(games_data)
+    games_df.to_csv(file)
+
+def add_game_to_db(game):
+    MediaId = uuid.uuid1()
+    SeriesId = uuid.uuid1()
+    CreatingPropertyId = uuid.uuid1()
+    ReleaseDate = datetime.datetime(2009,5,5)
+    
+    with pyodbc.connect(DB_CONNECTION) as conn:
+        with conn.cursor() as cursor:
+                
+            count = cursor.execute("""INSERT INTO [dbo].[Games] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,ReleaseDate)
+             VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'game',game['title'],game['img_url'],'this is a description',1,ReleaseDate).rowcount
+            conn.commit()
 
 def parse_game_steam(game):
     try:
@@ -130,7 +191,106 @@ def parse_game_steam(game):
             'available': '',
             'URL': ''
         }
+#Games-END****************************************************************************************************************************************************************************
 
+
+#Movies-START****************************************************************************************************************************************************************************
+def handle_movies_metacritic(driver, url, file):
+    movies = []
+    driver.get(url)
+    table = driver.find_elements(By.TAG_NAME, 'tr')
+    for row in table:
+        if check_if_class_exists('class', 'summary', row):
+            movies.append(row)
+
+    movies_data = []
+
+    for movie in movies:
+        parsedMovie = parse_movie_metacritic(movie)
+
+        add_movie_to_db(parsedMovie)
+        movies_data.append(parsedMovie)
+
+    movies_df = pd.DataFrame(movies_data)
+    movies_df.to_csv(file)
+
+def add_movie_to_db(movie):
+    MediaId = uuid.uuid1()
+    SeriesId = uuid.uuid1()
+    CreatingPropertyId = uuid.uuid1()
+    ReleaseDate = datetime.datetime(2009,5,5)
+    
+    with pyodbc.connect(DB_CONNECTION) as conn:
+        with conn.cursor() as cursor:
+                
+            count = cursor.execute("""INSERT INTO [dbo].[Movies] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,Length,ReleaseDate)
+             VALUES (?,?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'movie',movie['title'],movie['img_url'],'this is a description',1,100,ReleaseDate).rowcount
+            conn.commit()
+
+def parse_movie_metacritic(movie):
+
+    title_tag = movie.find_element(By.CLASS_NAME, 'title')
+    title = title_tag.text
+
+    img_url_tag = movie.find_element(By.TAG_NAME, 'img')
+    img_url = img_url_tag.get_attribute('src')
+
+    score_tag = movie.find_element(By.CLASS_NAME, 'metascore_w')
+    score = score_tag.text
+
+    try:
+        multi_tag = movie.find_element(By.CLASS_NAME, 'clamp-details')
+        multi = multi_tag.text
+        m = multi.split('|')
+        date = m[0]
+        rating = m[1]
+    except:
+        print('date and rating where not found')
+        date = ''
+        rating = ''
+
+    description_tag = movie.find_element(By.CLASS_NAME, 'summary')
+    description = description_tag.text
+
+    return {
+        'title': title,
+        'img_url': img_url,
+        'date': date,
+        'rating': rating,
+        'score': score,
+        'description': description
+    }
+#Movies-END****************************************************************************************************************************************************************************
+
+
+#Books-START****************************************************************************************************************************************************************************
+def handle_books_risingshadow(driver, url, file):
+    driver.get(url)
+    books = driver.find_elements(By.CLASS_NAME, 'library')
+    books_data = []
+
+    for book in books:
+        parsedBook = parse_book_risingshadow(book)
+
+        add_book_to_db(parsedBook)
+        books_data.append(parsedBook)
+
+    
+    books_df = pd.DataFrame(books_data)
+    books_df.to_csv(file)
+
+def add_book_to_db(book):
+    MediaId = uuid.uuid1()
+    SeriesId = uuid.uuid1()
+    CreatingPropertyId = uuid.uuid1()
+    ReleaseDate = datetime.datetime(2009,5,5)
+    
+    with pyodbc.connect(DB_CONNECTION) as conn:
+        with conn.cursor() as cursor:
+                
+            count = cursor.execute("""INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate)
+             VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'book',book['title'],'this is a description',1,100,ReleaseDate).rowcount
+            conn.commit()
 
 def parse_book_risingshadow(book):
     tr = book.find_elements(By.TAG_NAME, 'td')
@@ -149,109 +309,30 @@ def parse_book_risingshadow(book):
         'genre': data[4],
         'link': link
     }
+#Books-END*********************************************************************************************************************************************************************************************
 
 
-def parse_show_metacritic(show):
-
-    title_tag = show.find_element(By.CLASS_NAME, 'title')
-    title = title_tag.text
-
-    img_url_tag = show.find_element(By.TAG_NAME, 'img')
-    img_url = img_url_tag.get_attribute('src')
-
-    score_tag = show.find_element(By.CLASS_NAME, 'metascore_w')
-    score = score_tag.text
-
-    multi_tag = show.find_element(By.CLASS_NAME, 'clamp-details')
-    multi = multi_tag.text
-
-    description_tag = show.find_element(By.CLASS_NAME, 'summary')
-    description = description_tag.text
-
-    return {
-        'title': title,
-        'img_url': img_url,
-        'date': multi,
-        'score': score,
-        'description': description
-    }
-
-
-def handle_games_steam(driver, url, file):
-    driver.get(url)
-    page = driver.find_element(By.ID, 'tab_popular_comingsoon_content')
-    games = page.find_elements(By.TAG_NAME, 'a')
-    games_data = [parse_game_steam(game) for game in games]
-    games_df = pd.DataFrame(games_data)
-    games_df.to_csv(file)
-
-
-def handle_movies_metacritic(driver, url, file):
-    movies = []
-    driver.get(url)
-    table = driver.find_elements(By.TAG_NAME, 'tr')
-    for row in table:
-        if check_if_class_exists('class', 'summary', row):
-            movies.append(row)
-
-    movies_data = [parse_movie_metacritic(movie) for movie in movies]
-    movies_df = pd.DataFrame(movies_data)
-    movies_df.to_csv(file)
-
-def add_book_to_db(books_data):
-    sql = "INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate) VALUES (NEWID(),NEWID(),NEWID(),%s,%s,%s,%s,%s,%s)"
-    val = []
-    with pyodbc.connect(DB_CONNECTION) as conn:
-        with conn.cursor() as cursor:
-            
-            for book in books_data:
-                val.append('book',book['title'],book['img_url'],1,100,CONVERT(DATE, '21/07/1998'))
-                
-            cursor.executemany(sql,val)
-
-def handle_books_risingshadow(driver, url, file):
-    driver.get(url)
-    books = driver.find_elements(By.CLASS_NAME, 'library')
-    books_data = [parse_book_risingshadow(book) for book in books]
-    add_book_to_db(books_data)
-    #books_df = pd.DataFrame(books_data)
-    #books_df.to_csv(file)
-
-def handle_shows_metacritic(driver, url, file):
-    driver.get(url)
-    table = driver.find_elements(By.TAG_NAME, 'tr')
-
-    print(f'Found {len(table)}')
-    shows = []
-  
-    for row in table:
-        if check_if_class_exists('class', 'summary', row):
-            shows.append(row)
-    print(f'Found {len(shows)}')
-    shows_data = [parse_show_metacritic(show) for show in shows]
-    shows_df = pd.DataFrame(shows_data)
-    shows_df.to_csv(file)
 
 if __name__ == "__main__":
     print('Setting up driver')
     driver = get_driver()
     print('Driver set up')
 
-    #print('Gettting Games')
+    print('Gettting Games')
     #games on steam
-    #handle_games_steam(driver, GAME_STEAM_COMING_SOON_URL, 'games_steam.csv')
+    handle_games_steam(driver, GAME_STEAM_COMING_SOON_URL, 'games_steam.csv')
 
-    #print('Gettting Movies')
+    print('Gettting Movies')
     #movies on metacritic
-    #handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,'movies_metacritic.csv')
+    handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,'movies_metacritic.csv')
 
     print('Gettting Books')
     #books on risingshadow
     handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
 
-    #print('Gettting Shows')
+    print('Gettting Shows')
     #shows on metacritic
-    #handle_shows_metacritic(driver,SHOW_METACRITIC_COMING_SOON_URL,'shows_metacritic.csv')
+    handle_shows_metacritic(driver,SHOW_METACRITIC_COMING_SOON_URL,'shows_metacritic.csv')
 
     
 
