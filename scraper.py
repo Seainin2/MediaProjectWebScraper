@@ -1,7 +1,10 @@
 import pandas as pd
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+import pyodbc
 
 #Movie urls to be scraped
 MOVIE_MEATCRITIC_COMING_SOON_URL = 'https://www.metacritic.com/browse/movies/release-date/coming-soon/date?view=detailed'
@@ -19,6 +22,12 @@ BOOK_RISINGSHADOW_COMING_SOON_URL = "https://www.risingshadow.net/library/coming
 #Show urls to be scraped
 SHOW_METACRITIC_COMING_SOON_URL = 'https://www.metacritic.com/browse/tv/release-date/coming-soon/date'
 
+#Path to chrome driver
+PATH_TO_CHROMEDRIVER = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+
+#Database connection string
+DB_CONNECTION = 'Driver={ODBC Driver 18 for SQL Server};Server=tcp:mysqlserverseaininkeenan.database.windows.net,1433;Database=MediaApiDb;Uid=seaininkeenan;Pwd=1Azurepassword;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;'
+
 
 def get_driver():
     chrome_options = Options()
@@ -26,7 +35,7 @@ def get_driver():
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--headless')
 
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),options=chrome_options)
     return driver
 
 
@@ -189,13 +198,24 @@ def handle_movies_metacritic(driver, url, file):
     movies_df = pd.DataFrame(movies_data)
     movies_df.to_csv(file)
 
+def add_book_to_db(books_data):
+    sql = "INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate) VALUES (NEWID(),NEWID(),NEWID(),%s,%s,%s,%s,%s,%s)"
+    val = []
+    with pyodbc.connect(DB_CONNECTION) as conn:
+        with conn.cursor() as cursor:
+            
+            for book in books_data:
+                val.append('book',book['title'],book['img_url'],1,100,CONVERT(DATE, '21/07/1998'))
+                
+            cursor.executemany(sql,val)
 
 def handle_books_risingshadow(driver, url, file):
     driver.get(url)
     books = driver.find_elements(By.CLASS_NAME, 'library')
     books_data = [parse_book_risingshadow(book) for book in books]
-    books_df = pd.DataFrame(books_data)
-    books_df.to_csv(file)
+    add_book_to_db(books_data)
+    #books_df = pd.DataFrame(books_data)
+    #books_df.to_csv(file)
 
 def handle_shows_metacritic(driver, url, file):
     driver.get(url)
@@ -213,21 +233,26 @@ def handle_shows_metacritic(driver, url, file):
     shows_df.to_csv(file)
 
 if __name__ == "__main__":
+    print('Setting up driver')
+    driver = get_driver()
+    print('Driver set up')
 
-    #driver = get_driver()
-
+    #print('Gettting Games')
     #games on steam
     #handle_games_steam(driver, GAME_STEAM_COMING_SOON_URL, 'games_steam.csv')
 
+    #print('Gettting Movies')
     #movies on metacritic
     #handle_movies_metacritic(driver, MOVIE_MEATCRITIC_COMING_SOON_URL,'movies_metacritic.csv')
 
+    print('Gettting Books')
     #books on risingshadow
-    #handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
+    handle_books_risingshadow(driver,BOOK_RISINGSHADOW_COMING_SOON_URL,'books_risingshadow.csv')
 
+    #print('Gettting Shows')
     #shows on metacritic
     #handle_shows_metacritic(driver,SHOW_METACRITIC_COMING_SOON_URL,'shows_metacritic.csv')
 
     
 
-    #driver.quit()
+    driver.quit()
