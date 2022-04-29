@@ -7,6 +7,7 @@ from selenium.webdriver.common.by import By
 import pyodbc
 import uuid
 import datetime
+from code import parse_date
 
 #Movie urls to be scraped
 MOVIE_MEATCRITIC_COMING_SOON_URL = 'https://www.metacritic.com/browse/movies/release-date/coming-soon/date?view=detailed'
@@ -58,64 +59,62 @@ def check_if_class_exists(type, tag, html):
 #Show-START****************************************************************************************************************************************************************************        
 def handle_shows_metacritic(driver, url, file):
     driver.get(url)
-    table = driver.find_elements(By.TAG_NAME, 'tr')
-
-    print(f'Found {len(table)}')
-    shows = []
-  
-    for row in table:
-        if check_if_class_exists('class', 'summary', row):
-            shows.append(row)
-    print(f'Found {len(shows)}')
+    shows = driver.find_elements(By.TAG_NAME, 'tr')
 
     shows_data = []
 
     for show in shows:
         parsedShow = parse_show_metacritic(show)
 
-        add_show_to_db(parsedShow)
-        shows_data.append(parsedShow)
+        if parsedShow is not None:
+            if parsedShow['date'] is not None:
+                add_show_to_db(parsedShow)
+                shows_data.append(parsedShow)
 
     shows_df = pd.DataFrame(shows_data)
     shows_df.to_csv(file)
 
 def add_show_to_db(show):
-    MediaId = uuid.uuid1()
-    SeriesId = uuid.uuid1()
-    CreatingPropertyId = uuid.uuid1()
-    ReleaseDate = datetime.datetime(2009,5,5)
+    try:
+        MediaId = uuid.uuid1()
+        SeriesId = uuid.uuid1()
+        CreatingPropertyId = uuid.uuid1()
     
-    with pyodbc.connect(DB_CONNECTION) as conn:
-        with conn.cursor() as cursor:
+        with pyodbc.connect(DB_CONNECTION) as conn:
+            with conn.cursor() as cursor:
                 
-            count = cursor.execute("""INSERT INTO [dbo].[Shows] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName)
-             VALUES (?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'show',show['title'],show['img_url']).rowcount
-            conn.commit()
+                cursor.execute("""INSERT INTO [dbo].[Shows] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName)
+                VALUES (?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'show',show['title'],show['img_url']).rowcount
+                conn.commit()
+    except:
+        print()
 
 def parse_show_metacritic(show):
+    try:
+        title_tag = show.find_element(By.CLASS_NAME, 'title')
+        title = title_tag.text
 
-    title_tag = show.find_element(By.CLASS_NAME, 'title')
-    title = title_tag.text
+        img_url_tag = show.find_element(By.TAG_NAME, 'img')
+        img_url = img_url_tag.get_attribute('src')
 
-    img_url_tag = show.find_element(By.TAG_NAME, 'img')
-    img_url = img_url_tag.get_attribute('src')
+        score_tag = show.find_element(By.CLASS_NAME, 'metascore_w')
+        score = score_tag.text
 
-    score_tag = show.find_element(By.CLASS_NAME, 'metascore_w')
-    score = score_tag.text
+        multi_tag = show.find_element(By.CLASS_NAME, 'clamp-details')
+        multi = multi_tag.text
 
-    multi_tag = show.find_element(By.CLASS_NAME, 'clamp-details')
-    multi = multi_tag.text
+        description_tag = show.find_element(By.CLASS_NAME, 'summary')
+        description = description_tag.text
 
-    description_tag = show.find_element(By.CLASS_NAME, 'summary')
-    description = description_tag.text
-
-    return {
-        'title': title,
-        'img_url': img_url,
-        'date': multi,
-        'score': score,
-        'description': description
-    }
+        return {
+            'title': title,
+            'img_url': img_url+' ',
+            'date': parse_date(multi),
+            'score': score,
+            'description': description
+        }
+    except:
+        return None
 #Shows-END****************************************************************************************************************************************************************************
 
 
@@ -130,25 +129,28 @@ def handle_games_steam(driver, url, file):
     for game in games:
         
         parsedGame = parse_game_steam(game)
-        if not parsedGame['title'] == '':
-            add_game_to_db(parsedGame)
-            games_data.append(parsedGame)
+        if parsedGame is not None:
+            if parsedGame['date'] is not None:
+                add_game_to_db(parsedGame)
+                games_data.append(parsedGame)
 
     games_df = pd.DataFrame(games_data)
     games_df.to_csv(file)
 
 def add_game_to_db(game):
-    MediaId = uuid.uuid1()
-    SeriesId = uuid.uuid1()
-    CreatingPropertyId = uuid.uuid1()
-    ReleaseDate = datetime.datetime(2009,5,5)
+    try:
+        MediaId = uuid.uuid1()
+        SeriesId = uuid.uuid1()
+        CreatingPropertyId = uuid.uuid1()
     
-    with pyodbc.connect(DB_CONNECTION) as conn:
-        with conn.cursor() as cursor:
+        with pyodbc.connect(DB_CONNECTION) as conn:
+            with conn.cursor() as cursor:
                 
-            count = cursor.execute("""INSERT INTO [dbo].[Games] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,ReleaseDate)
-             VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'game',game['title'],game['img_url'],'this is a description',1,ReleaseDate).rowcount
-            conn.commit()
+                cursor.execute("""INSERT INTO [dbo].[Games] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,ReleaseDate)
+                VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'game',game['title'],game['img_url'],'this is a description',1,game['date']).rowcount
+                conn.commit()
+    except:
+        print()
 
 def parse_game_steam(game):
     try:
@@ -175,22 +177,15 @@ def parse_game_steam(game):
 
         return {
             'title': title,
-            'img_url': img_url,
-            'date': date,
+            'img_url': img_url+' ',
+            'date': parse_date(date),
             'tags': themes,
             'available': available,
             'URL': url
         }
 
     except:
-        return {
-            'title': '',
-            'img_url': '',
-            'date': '',
-            'tags': '',
-            'available': '',
-            'URL': ''
-        }
+        return None
 #Games-END****************************************************************************************************************************************************************************
 
 
@@ -198,68 +193,70 @@ def parse_game_steam(game):
 def handle_movies_metacritic(driver, url, file):
     movies = []
     driver.get(url)
-    table = driver.find_elements(By.TAG_NAME, 'tr')
-    for row in table:
-        if check_if_class_exists('class', 'summary', row):
-            movies.append(row)
+    movies = driver.find_elements(By.TAG_NAME, 'tr')
 
     movies_data = []
 
     for movie in movies:
         parsedMovie = parse_movie_metacritic(movie)
 
-        add_movie_to_db(parsedMovie)
-        movies_data.append(parsedMovie)
+        if parsedMovie is not None:
+            if parsedMovie['date'] is not None:
+                add_movie_to_db(parsedMovie)
+                movies_data.append(parsedMovie)
 
     movies_df = pd.DataFrame(movies_data)
     movies_df.to_csv(file)
 
 def add_movie_to_db(movie):
-    MediaId = uuid.uuid1()
-    SeriesId = uuid.uuid1()
-    CreatingPropertyId = uuid.uuid1()
-    ReleaseDate = datetime.datetime(2009,5,5)
+    try:
+
+        MediaId = uuid.uuid1()
+        SeriesId = uuid.uuid1()
+        CreatingPropertyId = uuid.uuid1()
     
-    with pyodbc.connect(DB_CONNECTION) as conn:
-        with conn.cursor() as cursor:
+        with pyodbc.connect(DB_CONNECTION) as conn:
+            with conn.cursor() as cursor:
                 
-            count = cursor.execute("""INSERT INTO [dbo].[Movies] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,Length,ReleaseDate)
-             VALUES (?,?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'movie',movie['title'],movie['img_url'],'this is a description',1,100,ReleaseDate).rowcount
-            conn.commit()
+                cursor.execute("""INSERT INTO [dbo].[Movies] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,Length,ReleaseDate)
+                VALUES (?,?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'movie',movie['title'],movie['img_url'],movie['description'],1,100,movie['date']).rowcount
+                conn.commit()
+    except:
+        print()
 
 def parse_movie_metacritic(movie):
 
-    title_tag = movie.find_element(By.CLASS_NAME, 'title')
-    title = title_tag.text
-
-    img_url_tag = movie.find_element(By.TAG_NAME, 'img')
-    img_url = img_url_tag.get_attribute('src')
-
-    score_tag = movie.find_element(By.CLASS_NAME, 'metascore_w')
-    score = score_tag.text
-
     try:
+        title_tag = movie.find_element(By.CLASS_NAME, 'title')
+        title = title_tag.text
+
+        img_url_tag = movie.find_element(By.TAG_NAME, 'img')
+        img_url = img_url_tag.get_attribute('src')
+
+        score_tag = movie.find_element(By.CLASS_NAME, 'metascore_w')
+        score = score_tag.text
+
+    
         multi_tag = movie.find_element(By.CLASS_NAME, 'clamp-details')
         multi = multi_tag.text
         m = multi.split('|')
         date = m[0]
         rating = m[1]
+    
+
+        description_tag = movie.find_element(By.CLASS_NAME, 'summary')
+        description = description_tag.text
+
+        return {
+            'title': title,
+            'img_url': img_url+' ',
+            'date': parse_date(date),
+            'rating': rating,
+            'score': score,
+            'description': description
+        }
     except:
-        print('date and rating where not found')
-        date = ''
-        rating = ''
-
-    description_tag = movie.find_element(By.CLASS_NAME, 'summary')
-    description = description_tag.text
-
-    return {
-        'title': title,
-        'img_url': img_url,
-        'date': date,
-        'rating': rating,
-        'score': score,
-        'description': description
-    }
+        return None
 #Movies-END****************************************************************************************************************************************************************************
 
 
@@ -271,26 +268,29 @@ def handle_books_risingshadow(driver, url, file):
 
     for book in books:
         parsedBook = parse_book_risingshadow(book)
-
-        add_book_to_db(parsedBook)
-        books_data.append(parsedBook)
+        if parsedBook is not None:
+            if parsedBook['date'] is not None:
+                add_book_to_db(parsedBook)
+                books_data.append(parsedBook)
 
     
     books_df = pd.DataFrame(books_data)
     books_df.to_csv(file)
 
 def add_book_to_db(book):
-    MediaId = uuid.uuid1()
-    SeriesId = uuid.uuid1()
-    CreatingPropertyId = uuid.uuid1()
-    ReleaseDate = datetime.datetime(2009,5,5)
+    try:
+        MediaId = uuid.uuid1()
+        SeriesId = uuid.uuid1()
+        CreatingPropertyId = uuid.uuid1()
     
-    with pyodbc.connect(DB_CONNECTION) as conn:
-        with conn.cursor() as cursor:
+        with pyodbc.connect(DB_CONNECTION) as conn:
+            with conn.cursor() as cursor:
                 
-            count = cursor.execute("""INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate)
-             VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'book',book['title'],'this is a description',1,100,ReleaseDate).rowcount
-            conn.commit()
+                cursor.execute("""INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate)
+                VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'book',book['title'],'this is a description',1,100,book['date']).rowcount
+                conn.commit()
+    except:
+        print()
 
 def parse_book_risingshadow(book):
     tr = book.find_elements(By.TAG_NAME, 'td')
@@ -303,9 +303,9 @@ def parse_book_risingshadow(book):
 
     return {
         'title': data[0],
-        'img_url': 'https://www.risingshadow.net/' + img_url,
+        'img_url': 'https://www.risingshadow.net/' + img_url+' ',
         'author': data[1],
-        'date': data[3],
+        'date': parse_date(data[3]),
         'genre': data[4],
         'link': link
     }
