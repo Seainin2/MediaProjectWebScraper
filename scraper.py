@@ -68,26 +68,39 @@ def handle_shows_metacritic(driver, url, file):
 
         if parsedShow is not None:
             if parsedShow['date'] is not None:
-                add_show_to_db(parsedShow)
                 shows_data.append(parsedShow)
+    add_shows_to_db(shows_data)
 
     shows_df = pd.DataFrame(shows_data)
     shows_df.to_csv(file)
 
-def add_show_to_db(show):
+
+def add_shows_to_db(shows_data):
     try:
-        MediaId = uuid.uuid1()
-        SeriesId = uuid.uuid1()
-        CreatingPropertyId = uuid.uuid1()
-    
         with pyodbc.connect(DB_CONNECTION) as conn:
             with conn.cursor() as cursor:
+                shows = []
+                q ="INSERT INTO [dbo].[Shows] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName) VALUES (?,?,?,?,?,?)"
+                for show in shows_data:
+                    
+                    mediaId = uuid.uuid4()
+                    seriesId = uuid.uuid4()
+                    creatingPropertyId = uuid.uuid4()
+
+                    shows.append((
+                        mediaId,
+                        seriesId,
+                        creatingPropertyId,
+                        'show',
+                        show['title'],
+                        show['img_url'],
+                    ))
                 
-                cursor.execute("""INSERT INTO [dbo].[Shows] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName)
-                VALUES (?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'show',show['title'],show['img_url']).rowcount
+
+                cursor.executemany(q,shows)
                 conn.commit()
-    except:
-        print()
+    except Exception as e:
+        print(e)
 
 def parse_show_metacritic(show):
     try:
@@ -131,26 +144,41 @@ def handle_games_steam(driver, url, file):
         parsedGame = parse_game_steam(game)
         if parsedGame is not None:
             if parsedGame['date'] is not None:
-                add_game_to_db(parsedGame)
                 games_data.append(parsedGame)
+    add_games_to_db(games_data)
 
     games_df = pd.DataFrame(games_data)
     games_df.to_csv(file)
 
-def add_game_to_db(game):
+def add_games_to_db(games_data):
     try:
-        MediaId = uuid.uuid1()
-        SeriesId = uuid.uuid1()
-        CreatingPropertyId = uuid.uuid1()
-    
         with pyodbc.connect(DB_CONNECTION) as conn:
             with conn.cursor() as cursor:
+                games = []
+                q ="INSERT INTO [dbo].[Games] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,ReleaseDate) VALUES (?,?,?,?,?,?,?,?,?)"
+                for game in games_data:
+                    
+                    mediaId = uuid.uuid4()
+                    seriesId = uuid.uuid4()
+                    creatingPropertyId = uuid.uuid4()
+
+                    games.append((
+                        mediaId,
+                        seriesId,
+                        creatingPropertyId,
+                        'game',
+                        game['title'],
+                        game['img_url'],
+                        'description',
+                        0,
+                        game['date']
+                    ))
                 
-                cursor.execute("""INSERT INTO [dbo].[Games] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,ReleaseDate)
-                VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'game',game['title'],game['img_url'],'this is a description',1,game['date']).rowcount
+
+                cursor.executemany(q,games)
                 conn.commit()
-    except:
-        print()
+    except Exception as e:
+        print(e)
 
 def parse_game_steam(game):
     try:
@@ -202,27 +230,45 @@ def handle_movies_metacritic(driver, url, file):
 
         if parsedMovie is not None:
             if parsedMovie['date'] is not None:
-                add_movie_to_db(parsedMovie)
+                
                 movies_data.append(parsedMovie)
+
+    add_movies_to_db(movies_data)
 
     movies_df = pd.DataFrame(movies_data)
     movies_df.to_csv(file)
 
-def add_movie_to_db(movie):
+def add_movies_to_db(movie_data):
     try:
-
-        MediaId = uuid.uuid1()
-        SeriesId = uuid.uuid1()
-        CreatingPropertyId = uuid.uuid1()
-    
         with pyodbc.connect(DB_CONNECTION) as conn:
             with conn.cursor() as cursor:
+                movies = []
+                q ="INSERT INTO [dbo].[Movies] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,Length,ReleaseDate)VALUES (?,?,?,?,?,?,?,?,?,?)";
+
+                for movie in movie_data:
+                    
+                    mediaId = uuid.uuid4()
+                    seriesId = uuid.uuid4()
+                    creatingPropertyId = uuid.uuid4()
+
+                    movies.append((
+                        mediaId,
+                        seriesId,
+                        creatingPropertyId,
+                        'movie',
+                        movie['title'],
+                        movie['img_url'],
+                        movie['description'],
+                        0,
+                        0,
+                        movie['date']
+                    ))
                 
-                cursor.execute("""INSERT INTO [dbo].[Movies] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,ImageName,Description,NumberofTimesSearched,Length,ReleaseDate)
-                VALUES (?,?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'movie',movie['title'],movie['img_url'],movie['description'],1,100,movie['date']).rowcount
+
+                cursor.executemany(q,movies)
                 conn.commit()
-    except:
-        print()
+    except Exception as e:
+        print(e)
 
 def parse_movie_metacritic(movie):
 
@@ -270,27 +316,44 @@ def handle_books_risingshadow(driver, url, file):
         parsedBook = parse_book_risingshadow(book)
         if parsedBook is not None:
             if parsedBook['date'] is not None:
-                add_book_to_db(parsedBook)
+                #add_books_to_db(parsedBook)
                 books_data.append(parsedBook)
 
+    add_books_to_db(books_data)
     
     books_df = pd.DataFrame(books_data)
     books_df.to_csv(file)
 
-def add_book_to_db(book):
+def add_books_to_db(book_data):
     try:
-        MediaId = uuid.uuid1()
-        SeriesId = uuid.uuid1()
-        CreatingPropertyId = uuid.uuid1()
-    
         with pyodbc.connect(DB_CONNECTION) as conn:
             with conn.cursor() as cursor:
+                books = []
+                q ="INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate) VALUES (?,?,?,?,?,?,?,?,?)";
+
+                for book in book_data:
+                    
+                    mediaId = uuid.uuid4()
+                    seriesId = uuid.uuid4()
+                    creatingPropertyId = uuid.uuid4()
+
+                    books.append((
+                        mediaId,
+                        seriesId,
+                        creatingPropertyId,
+                        'book',
+                        book['title'],
+                        'Description',
+                        0,
+                        0,
+                        book['date']
+                    ))
                 
-                cursor.execute("""INSERT INTO [dbo].[Books] (MediaId,SeriesId,CreatingPropertyId,MediaType,Title,Description,NumberofTimesSearched,Length,ReleaseDate)
-                VALUES (?,?,?,?,?,?,?,?,?)""",MediaId,SeriesId,CreatingPropertyId,'book',book['title'],'this is a description',1,100,book['date']).rowcount
+
+                cursor.executemany(q,books)
                 conn.commit()
-    except:
-        print()
+    except Exception as e:
+        print(e)
 
 def parse_book_risingshadow(book):
     tr = book.find_elements(By.TAG_NAME, 'td')
