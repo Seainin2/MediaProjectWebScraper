@@ -3,106 +3,42 @@
     "Description": "This template creates a rds database with sql server engine",
     "Parameters": {},
     "Resources": {
-        "RDSMSSQL": {
-            "Type": "AWS::RDS::DBInstance",
+        "LambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
             "Properties": {
-                "AllocatedStorage": "20",
-                "DBInstanceClass": "db.t3.small",
-                "DBInstanceIdentifier": "sqldatabase",
-                "Engine": "sqlserver-ex",
-                "MasterUsername": "Seainin",
-                "MasterUserPassword": "password",
-                "PubliclyAccessible": true,
-                "Port": "3306",
-                "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup"},
-                "VPCSecurityGroups": [
-                    {
-                        "Ref": "AllowAllConnections"
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "sts:AssumeRole"
+                    ],
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
                     }
+                  }
                 ]
-            }
-        },
-        "AllowAllConnections": {
-            "Type": "AWS::EC2::SecurityGroup",
-            "Properties": {
-                "GroupDescription": "Allow all connections to rds database",
-                "VpcId": {
-                    "Ref": "myVPC"
-                },
-                "SecurityGroupIngress": [
-                    {
-                        "IpProtocol": "-1",
-                        "FromPort": -1,
-                        "ToPort": -1,
-                        "CidrIp": "0.0.0.0/0"
-                    }
-                ],
-                "SecurityGroupEgress": [
-                    {
-                        "IpProtocol": "-1",
-                        "FromPort": -1,
-                        "ToPort": -1,
-                        "CidrIp": "0.0.0.0/0"
-                    }
-                ]
-            }
-        },
-        "myVPC": {
-            "Type": "AWS::EC2::VPC",
-            "Properties": {
-                "CidrBlock": "10.0.0.0/16",
-                "EnableDnsSupport": "true",
-                "EnableDnsHostnames": "true"
-            }
-        },
-        "subnet1": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "AvailabilityZone" : "us-east-1a",
-                "CidrBlock": "10.0.8.0/24",
-                "VpcId": {
-                    "Ref": "myVPC"
+              },
+              "Path": "/",
+              "Policies": [
+                {
+                  "PolicyName": "root",
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": "*",
+                        "Resource": "*"
+                      }
+                    ]
+                  }
                 }
+              ]
             }
-        },
-        "subnet2": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "AvailabilityZone" : "us-east-1b",
-                "CidrBlock": "10.0.0.0/24",
-                "VpcId": {
-                    "Ref": "myVPC"
-                }
-            }
-        },
-        "DBSubnetGroup": {
-            "Type": "AWS::RDS::DBSubnetGroup",
-            "Properties": {
-                "DBSubnetGroupDescription" : "Subnet for the rds db",
-                "SubnetIds": [
-                    {
-                        "Ref": "subnet1"
-                    },
-                    {
-                        "Ref": "subnet2"
-                    }
-                ]
-            }
-        },
-
-        "myInternetGateway" : {
-            "Type" : "AWS::EC2::InternetGateway",
-            "Properties" : {
-              "Tags" : [ {"Key" : "stack", "Value" : "production"}]
-            }
-         },
-
-         "AttachGateway" : {
-            "Type" : "AWS::EC2::VPCGatewayAttachment",
-            "Properties" : {
-               "VpcId" : { "Ref" : "myVPC" },
-               "InternetGatewayId" : { "Ref" : "myInternetGateway" }
-             }
-         }
+          }
     }
 }

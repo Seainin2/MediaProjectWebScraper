@@ -10,9 +10,9 @@
       }
     },
     "LambdaSNSFromRDS": {
-      "FunctionName": "lambdaSNSFromRDS",
       "Type": "AWS::Lambda::Function",
       "Properties": {
+        "FunctionName": "lambdaSNSFromRDS",
         "Handler": "awsdb.main_function",
         "Code": {
           "ZipFile": "fileb://function.zip"
@@ -79,7 +79,7 @@
       "Type": "AWS::RDS::DBInstance",
       "Properties": {
         "AllocatedStorage": "20",
-        "DBInstanceClass": "db.t3.small",
+        "DBInstanceClass": "db.t2.micro",
         "DBInstanceIdentifier": "sqldatabase",
         "Engine": "sqlserver-ex",
         "MasterUsername": "Seainin",
@@ -106,8 +106,8 @@
         "SecurityGroupIngress": [
           {
             "IpProtocol": "-1",
-            "FromPort": -1,
-            "ToPort": -1,
+            "FromPort": 0,
+            "ToPort": 3306,
             "CidrIp": "0.0.0.0/0"
           }
         ],
@@ -124,7 +124,7 @@
     "myVPC": {
       "Type": "AWS::EC2::VPC",
       "Properties": {
-        "CidrBlock": "10.0.0.0/16",
+        "CidrBlock": "172.30.1.0/24",
         "EnableDnsSupport": "true",
         "EnableDnsHostnames": "true"
       }
@@ -133,7 +133,7 @@
       "Type": "AWS::EC2::Subnet",
       "Properties": {
         "AvailabilityZone": "us-east-1a",
-        "CidrBlock": "10.0.8.0/24",
+        "CidrBlock": "172.30.3.0/24",
         "VpcId": {
           "Ref": "myVPC"
         }
