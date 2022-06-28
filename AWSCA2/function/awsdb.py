@@ -6,16 +6,18 @@ from datetime import datetime
 
 
 
-def connect_to_db():
-    server = 'mydbinstance.cmryojr1zdb3.us-east-1.rds.amazonaws.com'
+def connect_to_db(key):
+    #server = ' 'key
+    server = 'tcp:'+key+',3306'
     database = 'GamesDatabase'
-    username = 'Seainin2'
-    password = 'Awspassword'
-    cnxn = pyodbc.connect('DRIVER={ODBC DRIVER 17 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password+';Encrypt=yes;TrustServerCertificate=yes')
+    #port = '3306'
+    username = 'Seainin'
+    password = 'password'
+    #cnxn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};Server=tcp:mysqlserverseaininkeenan.database.windows.net,1433;Database=MediaApiDb;Uid=seaininkeenan;Pwd=;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;')
+    cnxn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};Server='+server+';Database='+database+';Uid='+username+';Pwd='+password+';Encrypt=yes;TrustServerCertificate=no;Connection Timeout=15;')
     return  cnxn.cursor()
 
 def subscribe(topic,protocol,endpoint):
-    print(f'Endpoint: {endpoint}')
     sns = boto3.client('sns')
     subscription = sns.subscribe(TopicArn=topic,Protocol=protocol,Endpoint=endpoint,ReturnSubscriptionArn=True)
     return subscription
@@ -31,30 +33,52 @@ def delete_subscription(subscription):
 
 def delete_topic(topic):
     topic.delete()
+
+def create_topic(name):
+    sns = boto3.resource("sns")
+    topic = sns.create_topic(Name=name)
+    return topic
     
-def subscribe_for_excercise(cursor):
-    subs = cursor.execute("Select * FROM userSub")
-
-    for sub in subs:
-        email,number,topicArn = sub
-
-        if len(email)>1:
-            subscribe(topicArn,'email',email)
-        if not number:
-            subscribe(topicArn,'sms',number)
-        
+def list_topics():
+    sns = boto3.resource("sns")
+    topics_iter = sns.topics.all()
+    return topics_iter
+    
 
 #if __name__ == "__main__":
 def main_function(event, context):
+    print(event)
 
-    cursor.execute('SELECT * FROM games')
+    key = event['server']
+    
+    cursor = connect_to_db(key)
+    Name = 'Witcher'
+    
+    topic1 = create_topic(Name)
+    print(topic1.arn)
+    cursor.execute("Insert into [dbo].[games](Title,TopicArn) Values (?,?)",Name,topic1.arn)
+    cursor.commit()
+    
+    Name = 'Zelda'
+    topic2 = create_topic(Name)
+    cursor.execute("Insert into [dbo].[games] (Title,TopicArn) Values (?,?)",Name,topic2.arn)
+    cursor.commit()
+    
+
+    cursor.execute('SELECT * FROM [dbo].[games]')
     rows = cursor.fetchall()
 
     for row in rows:
         
-        ReleaseDate = row[1].strftime("%d %b %Y")
+        
+        subscribe(row[2],'email',event['email'])
 
-        if ReleaseDate == '10 May 2022':
-            publish_message(row[2],f"{row[0]} has released today: {ReleaseDate}")
+        
+    time.sleep(60)
+    
+    for row in rows:
+        publish_message(row[2],f"You will be notified when {row[0]} Releases!!!!!!! YYYAAAAYYY")
+        
+    cursor.execute("Delete from games")
 
             

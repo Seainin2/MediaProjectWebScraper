@@ -1,1 +1,45 @@
-need createRole permission
+Service:
+The Stack set ups a RDS MSSQL database, a lambda function and a sns topic. The users enters there email when promted. the lambda function is then invoked. the lambda function gets games from a database and uses sns to send the user messages for each game in the database.
+
+Cloudformation:
+--RDS database RDSMSSQL
+	username Seainin,password password. database public. connected to vpc.
+
+--Topic MySNSTopic
+	this topic is never used
+
+--LambdaFunction LaambdaSNSFromRDS
+	uses python to connect to database and query it. creates sns topics for each game and subscribe email to each movie. publish message to each topic 
+
+--Role LamdaExecutionRole
+	Role to allow lambda to run
+
+--SecurityGroup AllowAllConnections
+	Allow alll connections, connected with VPC
+
+--VPC myVPC
+	virtual private cloud that rds database runs on
+
+--SubnetGroup DBSubnetGroup
+	Attched to db
+
+--InternetGateway myInternetGateway
+	Allow internet acccess to db
+
+Setup:
+--Create Stack
+	waits for stack and rds databse to become avalible
+
+--Lambda layer
+	Add pyodbc layer to lambda function. had trouble using it in cloud formation. layer allows lambda function to use miscrosft sql driver. setup publishes lambda layer and then adds it to lamda function
+
+--Adding to route table
+	Cloudforamtion doent let you alter default route table so added internet gate way to route table in setup instead.
+
+Demo:
+Ask user for email. gets rds endpoint use describe db instances. invokes lambda function with email and endpoint payload. lambda funcion subscribes user to two topics, sleeps for a minute then publishes a message to all topics
+
+Teardown:
+Deletes lambda layer
+Deletes all topics
+Deletescloud formation.

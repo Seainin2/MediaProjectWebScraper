@@ -1,5 +1,6 @@
-import pandas as pd
+#import pandas as pd
 from selenium import webdriver
+from chromedriver_py import binary_path
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
@@ -38,7 +39,8 @@ def get_driver():
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--headless')
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),options=chrome_options)
+    service_object = Service(binary_path)
+    driver = webdriver.Chrome(service=service_object,options=chrome_options)
     return driver
 
 
@@ -71,8 +73,8 @@ def handle_shows_metacritic(driver, url, file):
                 shows_data.append(parsedShow)
     add_shows_to_db(shows_data)
 
-    shows_df = pd.DataFrame(shows_data)
-    shows_df.to_csv(file)
+    #shows_df = pd.DataFrame(shows_data)
+    #shows_df.to_csv(file)
 
 
 def add_shows_to_db(shows_data):
@@ -147,8 +149,8 @@ def handle_games_steam(driver, url, file):
                 games_data.append(parsedGame)
     add_games_to_db(games_data)
 
-    games_df = pd.DataFrame(games_data)
-    games_df.to_csv(file)
+    #games_df = pd.DataFrame(games_data)
+    #games_df.to_csv(file)
 
 def add_games_to_db(games_data):
     try:
@@ -235,8 +237,8 @@ def handle_movies_metacritic(driver, url, file):
 
     add_movies_to_db(movies_data)
 
-    movies_df = pd.DataFrame(movies_data)
-    movies_df.to_csv(file)
+    #movies_df = pd.DataFrame(movies_data)
+    #movies_df.to_csv(file)
 
 def add_movies_to_db(movie_data):
     try:
@@ -321,8 +323,8 @@ def handle_books_risingshadow(driver, url, file):
 
     add_books_to_db(books_data)
     
-    books_df = pd.DataFrame(books_data)
-    books_df.to_csv(file)
+    #books_df = pd.DataFrame(books_data)
+    #books_df.to_csv(file)
 
 def add_books_to_db(book_data):
     try:
@@ -376,7 +378,7 @@ def parse_book_risingshadow(book):
 
 
 
-if __name__ == "__main__":
+def main_funtion():
     print('Setting up driver')
     driver = get_driver()
     print('Driver set up')
